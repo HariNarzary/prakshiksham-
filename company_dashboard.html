@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Dashboard - InternshipHub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-enter, .modal-leave { animation-duration: 0.3s; animation-timing-function: ease; animation-fill-mode: forwards; }
+        .modal-enter { animation-name: modal-bg-fade-in; }
+        .modal-leave { animation-name: modal-bg-fade-out; }
+        .modal-content-enter { animation-name: modal-content-scale-in; animation-duration: 0.3s; }
+        .modal-content-leave { animation-name: modal-content-scale-out; animation-duration: 0.3s; }
+        @keyframes modal-bg-fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modal-bg-fade-out { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes modal-content-scale-in { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes modal-content-scale-out { from { transform: scale(1); opacity: 1; } to { transform: scale(0.9); opacity: 0; } }
+        .star-rating i { cursor: pointer; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <nav class="w-64 bg-white shadow-lg h-screen sticky top-0 hidden lg:flex flex-col">
+            <div class="p-6 text-center border-b border-gray-200"><h2 class="text-xl font-bold text-blue-600">Company Portal</h2></div>
+            <ul id="sidebar-links" class="flex-grow p-4 space-y-2">
+                 <li><a href="#" data-view="dashboard" class="sidebar-link flex items-center gap-4 p-3 rounded-lg font-semibold"><i data-lucide="layout-dashboard"></i>Dashboard</a></li>
+                 <li><a href="#" data-view="postings" class="sidebar-link flex items-center gap-4 p-3 rounded-lg font-semibold"><i data-lucide="clipboard-list"></i>Postings</a></li>
+                 <li><a href="#" data-view="interns" class="sidebar-link flex items-center gap-4 p-3 rounded-lg font-semibold"><i data-lucide="users"></i>Interns</a></li>
+            </ul>
+            <div class="p-4 border-t border-gray-200"><a href="login.html" class="flex items-center gap-3 p-3 rounded-lg text-red-500 hover:bg-red-50 font-semibold"><i data-lucide="log-out" class="w-5 h-5"></i><span>Logout</span></a></div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-screen overflow-y-auto">
+             <header class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-40 border-b border-gray-200">
+                <div class="flex items-center gap-4"><i data-lucide="briefcase" class="text-blue-600 w-8 h-8"></i><h1 class="text-2xl font-bold hidden sm:block">InternshipHub</h1></div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 p-2">
+                        <i data-lucide="building-2" class="w-8 h-8 rounded-full bg-gray-200 p-1"></i>
+                        <span class="font-semibold hidden md:block">Innovate Inc.</span>
+                    </div>
+                </div>
+            </header>
+
+            <div id="company-dashboard-content" class="p-4 sm:p-6 lg:p-8"></div>
+        </main>
+    </div>
+    
+    <!-- Modal Structure -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden">
+        <div id="modal-content" class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto border border-gray-200">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 id="modal-title" class="text-xl font-bold">Modal Title</h3>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600"><i data-lucide="x-circle" class="w-6 h-6"></i></button>
+            </div>
+            <div id="modal-body" class="p-6 max-h-[70vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STORE ---
+        let MOCK_DATA = {
+            postings: [
+                { id: 1, role: 'Frontend Developer' },
+                { id: 2, role: 'UI/UX Designer' },
+                { id: 3, role: 'Backend Engineer' },
+                { id: 4, role: 'Data Science Intern' },
+            ],
+            interns: [
+                { id: 1, name: 'Priya Sharma', role: 'Frontend Developer', department: 'Engineering', mentor: 'Anika Gupta', joinedDate: '2025-09-01', avatar: 'https://placehold.co/100x100/E2E8F0/4A5568?text=PS', mentorFeedback: { rating: 4, comment: "Priya is a quick learner and very proactive." }, milestones: [{ title: 'Onboarding', completed: true, dueDate: '2025-09-05', completionDate: '2025-09-04' }, { title: 'Feature Dev', completed: true, dueDate: '2025-09-20', completionDate: '2025-09-20' }, { title: 'Testing', completed: false, dueDate: '2025-10-01', completionDate: null }] },
+                { id: 2, name: 'Alex Johnson', role: 'UI/UX Designer', department: 'Design', mentor: 'Rohan Mehta', joinedDate: '2025-09-01', avatar: 'https://placehold.co/100x100/E2E8F0/4A5568?text=AJ', mentorFeedback: { rating: 5, comment: "Excellent design sense and great team player." }, milestones: [{ title: 'Onboarding', completed: true, dueDate: '2025-09-05', completionDate: '2025-09-03' }, { title: 'User Research', completed: true, dueDate: '2025-09-18', completionDate: '2025-09-15' }, { title: 'Wireframing', completed: true, dueDate: '2025-10-01', completionDate: '2025-09-28' }] },
+                { id: 3, name: 'Michael Chen', role: 'Backend Engineer', department: 'Engineering', mentor: 'Vikram Singh', joinedDate: '2025-09-05', avatar: 'https://placehold.co/100x100/E2E8F0/4A5568?text=MC', mentorFeedback: { rating: 3, comment: "Solid technical skills, but could improve communication." }, milestones: [{ title: 'Onboarding', completed: true, dueDate: '2025-09-10', completionDate: '2025-09-10' }, { title: 'API Dev', completed: true, dueDate: '2025-09-25', completionDate: '2025-09-28' }, { title: 'Database Mgmt', completed: false, dueDate: '2025-10-10', completionDate: null }] },
+                { id: 4, name: 'Samantha Rao', role: 'Data Science Intern', department: 'Data & Analytics', mentor: 'Pooja Desai', joinedDate: '2025-09-10', avatar: 'https://placehold.co/100x100/E2E8F0/4A5568?text=SR', mentorFeedback: { rating: 4, comment: "Very analytical and detail-oriented." }, milestones: [{ title: 'Onboarding', completed: true, dueDate: '2025-09-15', completionDate: '2025-09-14' }, { title: 'Data Cleaning', completed: true, dueDate: '2025-09-30', completionDate: '2025-09-30' }, { title: 'Modeling', completed: true, dueDate: '2025-10-15', completionDate: '2025-10-12' }] },
+                { id: 5, name: 'Kevin Harris', role: 'Frontend Developer', department: 'Engineering', mentor: 'Anika Gupta', joinedDate: '2025-09-12', avatar: 'https://placehold.co/100x100/E2E8F0/4A5568?text=KH', mentorFeedback: { rating: 4, comment: "Strong front-end skills." }, milestones: [{ title: 'Onboarding', completed: true, dueDate: '2025-09-18', completionDate: '2025-09-18' }, { title: 'Component Dev', completed: false, dueDate: '2025-10-01', completionDate: null }, { title: 'Testing', completed: false, dueDate: '2025-10-15', completionDate: null }] },
+            ]
+        };
+
+        // --- GLOBAL VARIABLES & HELPERS ---
+        const contentArea = document.getElementById('company-dashboard-content');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalContent = document.getElementById('modal-content');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const TODAY = new Date('2025-10-06'); // Set a fixed "today" for consistent demo logic
+
+        const getStarRating = (rating) => {
+            let stars = '';
+            for (let i = 0; i < 5; i++) {
+                stars += `<i data-lucide="star" class="w-5 h-5 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}"></i>`;
+            }
+            return `<div class="flex items-center gap-1">${stars}</div>`;
+        };
+
+        const getInternStatus = (intern) => {
+            let isBehind = false;
+            let isAhead = true;
+
+            for (const milestone of intern.milestones) {
+                const dueDate = new Date(milestone.dueDate);
+                if (!milestone.completed && TODAY > dueDate) {
+                    isBehind = true;
+                    break; 
+                }
+                if (milestone.completed) {
+                    const completionDate = new Date(milestone.completionDate);
+                    if (completionDate > dueDate) {
+                        isAhead = false;
+                    }
+                } else {
+                     isAhead = false;
+                }
+            }
+
+            if (isBehind) return 'Behind Schedule';
+            if (isAhead) return 'Ahead of Schedule';
+            return 'On Schedule';
+        };
+
+        // --- RENDER FUNCTIONS ---
+        const renderDashboardView = () => {
+            const statusGroups = {
+                'Behind Schedule': [],
+                'On Schedule': [],
+                'Ahead of Schedule': []
+            };
+            MOCK_DATA.interns.forEach(intern => {
+                const status = getInternStatus(intern);
+                statusGroups[status].push(intern);
+            });
+
+            contentArea.innerHTML = `
+            <div class="space-y-6 fade-in">
+                <div class="bg-white rounded-xl shadow-lg p-6 border">
+                    <h3 class="text-2xl font-bold mb-4">Welcome, Innovate Inc.!</h3>
+                    <p class="text-gray-600">Here's a summary of your interns' project timelines.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-lg mb-4">Project Status Overview</h4>
+                    <div class="grid lg:grid-cols-3 gap-6">
+                        <!-- Behind Schedule -->
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <h5 class="font-bold text-red-700 flex items-center gap-2"><i data-lucide="alert-triangle"></i>Behind Schedule</h5>
+                            <div class="mt-2 space-y-1">${statusGroups['Behind Schedule'].length > 0 ? statusGroups['Behind Schedule'].map(i => `<button onclick="showViewInternModal(${i.id})" class="text-sm text-red-600 hover:underline">${i.name}</button>`).join('<br>') : `<p class="text-sm text-gray-500">None</p>`}</div>
+                        </div>
+                        <!-- On Schedule -->
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                             <h5 class="font-bold text-yellow-700 flex items-center gap-2"><i data-lucide="clock"></i>On Schedule</h5>
+                             <div class="mt-2 space-y-1">${statusGroups['On Schedule'].length > 0 ? statusGroups['On Schedule'].map(i => `<button onclick="showViewInternModal(${i.id})" class="text-sm text-yellow-600 hover:underline">${i.name}</button>`).join('<br>') : `<p class="text-sm text-gray-500">None</p>`}</div>
+                        </div>
+                        <!-- Ahead of Schedule -->
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <h5 class="font-bold text-green-700 flex items-center gap-2"><i data-lucide="check-circle-2"></i>Ahead of Schedule</h5>
+                            <div class="mt-2 space-y-1">${statusGroups['Ahead of Schedule'].length > 0 ? statusGroups['Ahead of Schedule'].map(i => `<button onclick="showViewInternModal(${i.id})" class="text-sm text-green-600 hover:underline">${i.name}</button>`).join('<br>') : `<p class="text-sm text-gray-500">None</p>`}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            lucide.createIcons();
+        };
+        
+        const renderPostingsView = () => { /* Unchanged */ contentArea.innerHTML = `<div class="bg-white rounded-xl shadow-lg p-6 fade-in border"><div class="flex justify-between items-center mb-4"><h3 class="text-2xl font-bold">Manage Postings</h3><button onclick="showAddPostingModal()" class="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5"></i> Add New Posting</button></div><div class="overflow-x-auto"><table class="w-full text-sm whitespace-nowrap"><thead><tr class="border-b"><th class="text-left p-3 font-semibold">Role</th><th class="text-left p-3 font-semibold">Actions</th></tr></thead><tbody>${MOCK_DATA.postings.map(p => `<tr class="border-b"><td class="p-3 font-semibold">${p.role}</td><td class="p-3 flex gap-4"><button onclick="showEditPostingModal('${p.role}')" class="text-gray-500 hover:text-blue-600"><i data-lucide="edit"></i></button><button onclick="showDeletePostingModal('${p.role}')" class="text-gray-500 hover:text-red-600"><i data-lucide="trash-2"></i></button></td></tr>`).join('')}</tbody></table></div></div>`; lucide.createIcons(); };
+
+        const renderInternsView = () => {
+             contentArea.innerHTML = `
+             <div class="bg-white rounded-xl shadow-lg p-6 fade-in border">
+                <h3 class="text-2xl font-bold mb-4">Manage Interns</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm whitespace-nowrap">
+                        <thead>
+                            <tr class="border-b"><th class="text-left p-3 font-semibold">Name</th><th class="text-left p-3 font-semibold">Role</th><th class="text-left p-3 font-semibold">Department</th><th class="text-left p-3 font-semibold">Mentor Rating</th><th class="text-left p-3 font-semibold">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            ${MOCK_DATA.interns.map(a => `
+                            <tr class="border-b">
+                                <td class="p-3 font-semibold">${a.name}</td>
+                                <td class="p-3">${a.role}</td>
+                                <td class="p-3">${a.department}</td>
+                                <td class="p-3">${getStarRating(a.mentorFeedback.rating)}</td>
+                                <td class="p-3 flex gap-4 items-center">
+                                    <button onclick="showViewInternModal(${a.id})" class="text-gray-500 hover:text-blue-600" title="View Profile"><i data-lucide="eye"></i></button>
+                                    <button onclick="showFeedbackModal(${a.id})" class="text-gray-500 hover:text-yellow-500" title="Provide Feedback"><i data-lucide="star"></i></button>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+            lucide.createIcons();
+        };
+        
+        // --- MODAL FUNCTIONS ---
+        const showModal = (title, bodyHtml) => { /* Unchanged */ modalTitle.innerHTML = title; modalBody.innerHTML = bodyHtml; modalBackdrop.classList.remove('hidden', 'modal-leave'); modalBackdrop.classList.add('modal-enter'); modalContent.classList.remove('modal-content-leave'); modalContent.classList.add('modal-content-enter'); };
+        window.hideModal = () => { /* Unchanged */ modalBackdrop.classList.add('modal-leave'); modalContent.classList.add('modal-content-leave'); setTimeout(() => { modalBackdrop.classList.add('hidden'); }, 300); };
+        window.showAddPostingModal = () => showModal('Add New Posting', `<form class="space-y-4" onsubmit="event.preventDefault(); hideModal();"><label class="block font-semibold">Role Title</label><input type="text" class="w-full p-2 rounded bg-gray-100 border"><label class="block font-semibold">Description</label><textarea class="w-full p-2 rounded bg-gray-100 border" rows="4"></textarea><div class="flex justify-end gap-3 pt-4"><button type="button" onclick="hideModal()" class="px-4 py-2 rounded-lg bg-gray-200 font-semibold">Cancel</button><button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">Create Posting</button></div></form>`);
+        window.showEditPostingModal = (role) => showModal('Edit Posting', `<form class="space-y-4" onsubmit="event.preventDefault(); hideModal();"><label class="block font-semibold">Role Title</label><input type="text" value="${role}" class="w-full p-2 rounded bg-gray-100 border"><label class="block font-semibold">Description</label><textarea class="w-full p-2 rounded bg-gray-100 border" rows="4"></textarea><div class="flex justify-end gap-3 pt-4"><button type="button" onclick="hideModal()" class="px-4 py-2 rounded-lg bg-gray-200 font-semibold">Cancel</button><button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">Save Changes</button></div></form>`);
+        window.showDeletePostingModal = (role) => showModal('Confirm Deletion', `<p>Are you sure you want to delete the posting for <strong>${role}</strong>?</p><div class="flex justify-end gap-3 pt-4"><button type="button" onclick="hideModal()" class="px-4 py-2 rounded-lg bg-gray-200 font-semibold">Cancel</button><button type="button" onclick="hideModal()" class="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold">Delete</button></div>`);
+        
+        window.showViewInternModal = (internId) => {
+            const intern = MOCK_DATA.interns.find(a => a.id === internId);
+            if (!intern) return;
+
+            const bodyHtml = `
+            <div class="space-y-6">
+                <div class="flex items-start gap-6">
+                    <img src="${intern.avatar}" alt="${intern.name}" class="w-24 h-24 rounded-full border-4 border-white shadow-md">
+                    <div class="flex-1">
+                        <h3 class="text-3xl font-bold">${intern.name}</h3>
+                        <p class="text-gray-500 text-lg">Interning as ${intern.role} in the ${intern.department} department.</p>
+                        <p class="text-gray-500 mt-1 flex items-center gap-2"><i data-lucide="user-check" class="w-4 h-4"></i>Assigned Mentor: ${intern.mentor}</p>
+                        <p class="text-gray-500 mt-1 flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4"></i>Joined: ${new Date(intern.joinedDate).toLocaleDateString()}</p>
+                    </div>
+                </div>
+                <div class="border-t pt-4">
+                    <h4 class="font-semibold mb-2 text-lg">Mentor Feedback</h4>
+                    <div class="flex items-center gap-4">
+                        ${getStarRating(intern.mentorFeedback.rating)}
+                        <span class="font-bold text-lg">(${intern.mentorFeedback.rating}/5)</span>
+                    </div>
+                    <blockquote class="mt-2 pl-4 border-l-4 italic text-gray-600">"${intern.mentorFeedback.comment}"</blockquote>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-6 border-t mt-6">
+                <button type="button" onclick="hideModal()" class="px-4 py-2 rounded-lg bg-gray-200 font-semibold">Close</button>
+            </div>
+            `;
+            showModal(`Intern Profile`, bodyHtml);
+            lucide.createIcons();
+        };
+
+        window.showFeedbackModal = (internId) => {
+            const intern = MOCK_DATA.interns.find(a => a.id === internId);
+            if (!intern) return;
+            const bodyHtml = `
+            <form id="feedback-form" class="space-y-4">
+                <input type="hidden" id="feedback-intern-id" value="${intern.id}">
+                <p>You are providing feedback for <strong>${intern.name}</strong>.</p>
+                <div>
+                    <label class="block font-semibold mb-2">Overall Rating</label>
+                    <div class="star-rating flex items-center text-3xl text-gray-300" data-rating="${intern.mentorFeedback.rating || 0}">
+                        <i data-lucide="star" data-value="1"></i><i data-lucide="star" data-value="2"></i><i data-lucide="star" data-value="3"></i><i data-lucide="star" data-value="4"></i><i data-lucide="star" data-value="5"></i>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-2">Comments</label>
+                    <textarea id="feedback-comment" class="w-full p-2 rounded bg-gray-100 border" rows="4" placeholder="Provide details on performance...">${intern.mentorFeedback.comment || ''}</textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="hideModal()" class="px-4 py-2 rounded-lg bg-gray-200 font-semibold">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">Submit Feedback</button>
+                </div>
+            </form>
+            `;
+            showModal('Provide Mentor Feedback', bodyHtml);
+            lucide.createIcons();
+            
+            const starContainer = document.querySelector('.star-rating');
+            const stars = starContainer.querySelectorAll('i');
+            
+            const setRating = (rating) => {
+                starContainer.dataset.rating = rating;
+                stars.forEach(s => {
+                    s.classList.toggle('text-yellow-400', s.dataset.value <= rating);
+                    s.classList.toggle('fill-current', s.dataset.value <= rating);
+                });
+            };
+
+            setRating(starContainer.dataset.rating); // Set initial state
+
+            stars.forEach(star => {
+                star.addEventListener('mouseover', () => {
+                    const rating = star.dataset.value;
+                    stars.forEach(s => {
+                        s.classList.toggle('text-yellow-400', s.dataset.value <= rating);
+                        s.classList.toggle('fill-current', s.dataset.value <= rating);
+                    });
+                });
+                star.addEventListener('mouseout', () => {
+                     const currentRating = starContainer.dataset.rating;
+                     stars.forEach(s => {
+                        s.classList.toggle('text-yellow-400', s.dataset.value <= currentRating);
+                        s.classList.toggle('fill-current', s.dataset.value <= currentRating);
+                    });
+                });
+                star.addEventListener('click', () => {
+                    starContainer.dataset.rating = star.dataset.value;
+                });
+            });
+
+            document.getElementById('feedback-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const internIdToUpdate = parseInt(document.getElementById('feedback-intern-id').value);
+                const internToUpdate = MOCK_DATA.interns.find(i => i.id === internIdToUpdate);
+                if (internToUpdate) {
+                    internToUpdate.mentorFeedback.rating = parseInt(starContainer.dataset.rating) || 0;
+                    internToUpdate.mentorFeedback.comment = document.getElementById('feedback-comment').value;
+                }
+                hideModal();
+                const currentView = document.querySelector('.sidebar-link.bg-blue-50')?.dataset.view || 'dashboard';
+                switchView(currentView);
+            });
+        };
+
+
+        // --- APP LOGIC & NAVIGATION ---
+        const setActiveLink = (view) => {
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                if (link.dataset.view === view) {
+                    link.classList.add('bg-blue-50', 'text-blue-600');
+                    link.classList.remove('text-gray-600', 'hover:bg-gray-100');
+                } else {
+                    link.classList.remove('bg-blue-50', 'text-blue-600');
+                    link.classList.add('text-gray-600', 'hover:bg-gray-100');
+                }
+            });
+        };
+
+        const switchView = (view) => {
+            switch (view) {
+                case 'postings': renderPostingsView(); break;
+                case 'interns': renderInternsView(); break;
+                default: renderDashboardView();
+            }
+            setActiveLink(view);
+        };
+
+        // --- APP INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchView(link.dataset.view);
+                });
+            });
+            document.getElementById('modal-close-btn').addEventListener('click', hideModal);
+            modalBackdrop.addEventListener('click', e => e.target === modalBackdrop && hideModal());
+            
+            switchView('dashboard');
+        });
+    </script>
+</body>
+</html>
+
